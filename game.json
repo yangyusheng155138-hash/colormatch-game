@@ -1,0 +1,14 @@
+{
+  "name": "Color Match - Bubble Pop",
+  "version": "1.0.0",
+  "orientation": "portrait",
+  "deviceOrientation": "portrait",
+  "minPlatformVersion": "1.0.0",
+  "description": "A fun color matching puzzle game",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512"
+    }
+  ]
+}

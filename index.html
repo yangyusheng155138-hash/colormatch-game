@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Color Match - Bubble Pop</title>
+    <script src="tt-sdk.js"></script>
+    <script src="ads-manager.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; }
+        html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); display: flex; justify-content: center; align-items: center; }
+        #gameContainer { width: 100%; max-width: 400px; height: 100%; position: relative; overflow: hidden; }
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+        .screen.active { display: flex; }
+        #menuScreen { background: radial-gradient(ellipse at center, #2a2a4e 0%, #1a1a2e 70%); }
+        .game-logo { width: 100px; height: 100px; margin-bottom: 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 25px; display: flex; justify-content: center; align-items: center; font-size: 50px; box-shadow: 0 15px 40px rgba(245, 87, 108, 0.4); animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .game-title { font-size: 2rem; font-weight: 800; color: #fff; text-align: center; margin-bottom: 10px; background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .game-subtitle { font-size: 0.9rem; color: #a0a0b0; margin-bottom: 30px; text-align: center; }
+        .menu-stats { display: flex; gap: 30px; margin-bottom: 30px; }
+        .menu-stat { text-align: center; }
+        .menu-stat-value { font-size: 1.5rem; font-weight: bold; color: #ffd700; }
+        .menu-stat-label { font-size: 0.7rem; color: #808090; text-transform: uppercase; }
+        .btn { padding: 15px 40px; font-size: 1rem; font-weight: 700; border: none; border-radius: 50px; cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px; min-width: 200px; margin: 8px 0; }
+        .btn-primary { background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%); color: white; box-shadow: 0 8px 25px rgba(245, 87, 108, 0.4); }
+        .btn-primary:active { transform: scale(0.95); }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 2px solid rgba(255,255,255,0.2); }
+        .btn-ad { background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%); color: white; box-shadow: 0 8px 25px rgba(0, 242, 254, 0.3); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 8px 25px rgba(0, 242, 254, 0.3); } 50% { box-shadow: 0 8px 35px rgba(0, 242, 254, 0.5); } }
+        .btn-small { padding: 10px 25px; font-size: 0.85rem; min-width: 140px; }
+        .ad-badge { background: #ffd700; color: #333; font-size: 0.6rem; padding: 2px 6px; border-radius: 8px; margin-left: 5px; font-weight: bold; }
+        #gameScreen { padding: 0; }
+        #gameHeader { position: absolute; top: 0; left: 0; right: 0; padding: 15px; display: flex; justify-content: space-between; background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 100%); z-index: 10; }
+        .stat-box { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 8px 15px; text-align: center; }
+        .stat-label { font-size: 0.6rem; color: #808090; text-transform: uppercase; }
+        .stat-value { font-size: 1.1rem; font-weight: 700; color: #fff; }
+        #gameCanvas { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        #gameOverScreen, #levelCompleteScreen { background: rgba(0,0,0,0.9); }
+        .game-over-title { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 10px; }
+        .final-stats { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 20px 30px; margin-bottom: 20px; display: flex; gap: 30px; }
+        .final-stat { text-align: center; }
+        .final-stat-value { font-size: 1.8rem; font-weight: 800; color: #ffd700; }
+        .final-stat-label { font-size: 0.7rem; color: #808090; text-transform: uppercase; }
+        .level-complete-title { font-size: 1.8rem; font-weight: 800; color: #4facfe; margin-bottom: 15px; }
+        .reward-box { background: rgba(255,215,0,0.1); border: 2px solid rgba(255,215,0,0.3); border-radius: 15px; padding: 15px 30px; margin-bottom: 20px; }
+        #orientationMessage { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #0a0a1a; z-index: 10000; justify-content: center; align-items: center; flex-direction: column; }
+        #orientationMessage .icon { font-size: 60px; margin-bottom: 15px; }
+        #orientationMessage .text { color: white; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+    <div id="orientationMessage">
+        <div class="icon">📱</div>
+        <div class="text">Please rotate to portrait mode</div>
+    </div>
+
+    <div id="gameContainer">
+        <div id="menuScreen" class="screen active">
+            <div class="game-logo">🎯</div>
+            <h1 class="game-title">Color Match</h1>
+            <p class="game-subtitle">Pop bubbles • Match colors</p>
+            <div class="menu-stats">
+                <div class="menu-stat"><div class="menu-stat-value" id="highScoreDisplay">0</div><div class="menu-stat-label">Best</div></div>
+                <div class="menu-stat"><div class="menu-stat-value" id="gamesPlayedDisplay">0</div><div class="menu-stat-label">Games</div></div>
+            </div>
+            <button class="btn btn-primary" onclick="startGame()">Play Now</button>
+        </div>
+
+        <div id="gameScreen" class="screen">
+            <div id="gameHeader">
+                <div class="stat-box"><div class="stat-label">Score</div><div class="stat-value" id="scoreValue">0</div></div>
+                <div class="stat-box"><div class="stat-label">Level</div><div class="stat-value" id="levelValue">1</div></div>
+                <div class="stat-box"><div class="stat-label">Goal</div><div class="stat-value" id="goalValue">1,000</div></div>
+            </div>
+            <canvas id="gameCanvas"></canvas>
+        </div>
+
+        <div id="levelCompleteScreen" class="screen">
+            <h2 class="level-complete-title">Level Complete! 🎉</h2>
+            <div class="reward-box"><div class="stat-label">Bonus</div><div class="stat-value" id="levelBonusValue">+500</div></div>
+            <button class="btn btn-primary" onclick="nextLevel()">Next Level</button>
+            <button class="btn btn-ad" onclick="watchAdForDoubleBonus()">2x Bonus <span class="ad-badge">AD</span></button>
+        </div>
+
+        <div id="gameOverScreen" class="screen">
+            <h2 class="game-over-title">Game Over</h2>
+            <div class="final-stats">
+                <div class="final-stat"><span class="final-stat-value" id="finalScore">0</span><span class="final-stat-label">Score</span></div>
+                <div class="final-stat"><span class="final-stat-value" id="finalLevel">1</span><span class="final-stat-label">Level</span></div>
+            </div>
+            <button class="btn btn-ad" id="reviveBtn" onclick="watchAdToRevive()">Continue <span class="ad-badge">AD</span></button>
+            <button class="btn btn-primary" onclick="restartGame()">Play Again</button>
+            <button class="btn btn-secondary btn-small" onclick="backToMenu()">Menu</button>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            COLORS: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#FFD93D'],
+            GRID_ROWS: 10, GRID_COLS: 8, BUBBLE_SIZE: 40, ANIMATION_DURATION: 200, MIN_MATCH: 2,
+            LEVEL_GOALS: [1000, 2500, 4500, 7000, 10000, 13500, 17500, 22000, 27000, 33000]
+        };
+
+        const state = { canvas: null, ctx: null, grid: [], score: 0, level: 1, goal: 0, highScore: 0, gamesPlayed: 0, hasRevived: false, isAnimating: false, particles: [], gameStartTime: 0 };
+
+        function loadStats() {
+            try {
+                const stats = JSON.parse(localStorage.getItem('colorMatchStats') || '{}');
+                state.highScore = stats.highScore || 0;
+                state.gamesPlayed = stats.gamesPlayed || 0;
+                document.getElementById('highScoreDisplay').textContent = state.highScore.toLocaleString();
+                document.getElementById('gamesPlayedDisplay').textContent = state.gamesPlayed;
+            } catch (e) {}
+        }
+
+        function saveStats() {
+            try {
+                if (state.score > state.highScore) state.highScore = state.score;
+                localStorage.setItem('colorMatchStats', JSON.stringify({ highScore: state.highScore, gamesPlayed: state.gamesPlayed }));
+            } catch (e) {}
+        }
+
+        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+        async function init() {
+            loadStats();
+            if (window.ttSDK) await window.ttSDK.init();
+            state.canvas = document.getElementById('gameCanvas');
+            state.ctx = state.canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            state.canvas.addEventListener('click', handleInput);
+            state.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouch(e); }, { passive: false });
+            checkOrientation();
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            state.canvas.width = Math.min(container.clientWidth - 30, CONFIG.GRID_COLS * CONFIG.BUBBLE_SIZE);
+            state.canvas.height = Math.min(CONFIG.GRID_ROWS * CONFIG.BUBBLE_SIZE + 30, container.clientHeight - 120);
+            if (state.grid.length) updateBubblePositions();
+        }
+
+        function updateBubblePositions() {
+            const offsetX = (state.canvas.width - CONFIG.GRID_COLS * CONFIG.BUBBLE_SIZE) / 2;
+            const offsetY = 15;
+            for (let r = 0; r < CONFIG.GRID_ROWS; r++) for (let c = 0; c < CONFIG.GRID_COLS; c++) if (state.grid[r] && state.grid[r][c]) { state.grid[r][c].x = offsetX + c * CONFIG.BUBBLE_SIZE; state.grid[r][c].y = offsetY + r * CONFIG.BUBBLE_SIZE; }
+        }
+
+        function checkOrientation() { 
+            // 只在移动端检测设备方向，桌面浏览器不限制
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                document.getElementById('orientationMessage').style.display = (window.innerWidth > window.innerHeight && window.innerWidth > 500) ? 'flex' : 'none';
+            } else {
+                document.getElementById('orientationMessage').style.display = 'none';
+            }
+        }
+
+        function handleTouch(e) { const t = e.touches[0], r = state.canvas.getBoundingClientRect(); processInput((t.clientX - r.left) * (state.canvas.width / r.width), (t.clientY - r.top) * (state.canvas.height / r.height)); }
+        function handleInput(e) { const r = state.canvas.getBoundingClientRect(); processInput((e.clientX - r.left) * (state.canvas.width / r.width), (e.clientY - r.top) * (state.canvas.height / r.height)); }
+
+        function processInput(x, y) {
+            if (state.isAnimating) return;
+            const offsetX = (state.canvas.width - CONFIG.GRID_COLS * CONFIG.BUBBLE_SIZE) / 2, offsetY = 15;
+            const c = Math.floor((x - offsetX) / CONFIG.BUBBLE_SIZE), r = Math.floor((y - offsetY) / CONFIG.BUBBLE_SIZE);
+            if (r < 0 || r >= CONFIG.GRID_ROWS || c < 0 || c >= CONFIG.GRID_COLS) return;
+            if (!state.grid[r] || !state.grid[r][c]) return;
+            const connected = findConnected(r, c, state.grid[r][c].color);
+            if (connected.length >= CONFIG.MIN_MATCH) { removeBubbles(connected); if (window.ttSDK) window.ttSDK.vibrateShort(); } else { state.grid[r][c].shake = 6; }
+        }
+
+        function initGrid() { state.grid = []; for (let r = 0; r < CONFIG.GRID_ROWS; r++) { state.grid[r] = []; for (let c = 0; c < CONFIG.GRID_COLS; c++) state.grid[r][c] = createBubble(r, c); } updateBubblePositions(); }
+        function createBubble(r, c) { const offsetX = (state.canvas.width - CONFIG.GRID_COLS * CONFIG.BUBBLE_SIZE) / 2, offsetY = 15; return { color: Math.floor(Math.random() * CONFIG.COLORS.length), x: offsetX + c * CONFIG.BUBBLE_SIZE, y: offsetY + r * CONFIG.BUBBLE_SIZE, size: CONFIG.BUBBLE_SIZE - 3, row: r, col: c, scale: 1, shake: 0 }; }
+
+        function findConnected(sr, sc, color) {
+            const visited = new Set(), connected = [], queue = [[sr, sc]];
+            while (queue.length) { const [r, c] = queue.shift(), key = `${r},${c}`; if (visited.has(key)) continue; visited.add(key); if (r < 0 || r >= CONFIG.GRID_ROWS || c < 0 || c >= CONFIG.GRID_COLS) continue; if (!state.grid[r] || !state.grid[r][c] || state.grid[r][c].color !== color) continue; connected.push([r, c]); queue.push([r-1,c], [r+1,c], [r,c-1], [r,c+1]); }
+            return connected;
+        }
+
+        function removeBubbles(bubbles) {
+            state.isAnimating = true;
+            state.score += bubbles.length * 10 + Math.max(0, (bubbles.length - CONFIG.MIN_MATCH) * bubbles.length * 5);
+            bubbles.forEach(([r,c]) => { const b = state.grid[r][c]; createParticles(b.x + b.size/2, b.y + b.size/2, CONFIG.COLORS[b.color]); state.grid[r][c] = null; });
+            updateUI();
+            setTimeout(() => { dropBubbles(); shiftColumns(); state.isAnimating = false; if (state.score >= state.goal) levelComplete(); else if (isGameOver()) showGameOver(); }, CONFIG.ANIMATION_DURATION);
+        }
+
+        function dropBubbles() { for (let c = 0; c < CONFIG.GRID_COLS; c++) { let wr = CONFIG.GRID_ROWS - 1; for (let r = CONFIG.GRID_ROWS - 1; r >= 0; r--) if (state.grid[r][c]) { if (r !== wr) { state.grid[wr][c] = state.grid[r][c]; state.grid[r][c] = null; state.grid[wr][c].row = wr; } wr--; } } }
+        function shiftColumns() { let wc = 0; for (let c = 0; c < CONFIG.GRID_COLS; c++) { let has = false; for (let r = 0; r < CONFIG.GRID_ROWS; r++) if (state.grid[r][c]) { has = true; break; } if (has) { if (c !== wc) { for (let r = 0; r < CONFIG.GRID_ROWS; r++) { state.grid[r][wc] = state.grid[r][c]; state.grid[r][c] = null; if (state.grid[r][wc]) state.grid[r][wc].col = wc; } } wc++; } } updateBubblePositions(); }
+        function isGameOver() { for (let r = 0; r < CONFIG.GRID_ROWS; r++) for (let c = 0; c < CONFIG.GRID_COLS; c++) if (state.grid[r][c] && findConnected(r, c, state.grid[r][c].color).length >= CONFIG.MIN_MATCH) return false; return true; }
+
+        function createParticles(x, y, color) { for (let i = 0; i < 5; i++) state.particles.push({ x, y, vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6, life: 1, color, size: Math.random() * 3 + 2 }); }
+
+        function startGame() { state.score = 0; state.level = 1; state.goal = CONFIG.LEVEL_GOALS[0]; state.hasRevived = false; state.gameStartTime = Date.now(); state.gamesPlayed++; initGrid(); updateUI(); showScreen('gameScreen'); if (window.ttSDK) window.ttSDK.onGameStart(); if (window.adsManager) window.adsManager.onGameStart(); gameLoop(); }
+        function levelComplete() { if (window.ttSDK) window.ttSDK.onLevelComplete(state.level, state.score); if (window.adsManager) window.adsManager.showLevelCompleteInterstitial(); document.getElementById('levelBonusValue').textContent = '+' + (500 * state.level).toLocaleString(); showScreen('levelCompleteScreen'); }
+        function nextLevel() { state.level++; state.goal = CONFIG.LEVEL_GOALS[Math.min(state.level - 1, CONFIG.LEVEL_GOALS.length - 1)] || state.goal + 5000; state.hasRevived = false; initGrid(); updateUI(); showScreen('gameScreen'); }
+        async function watchAdForDoubleBonus() { const bonus = 500 * state.level; if (window.adsManager && await window.adsManager.showDoubleRewardAd()) { state.score += bonus; updateUI(); } nextLevel(); }
+
+        function showGameOver() {
+            saveStats(); document.getElementById('finalScore').textContent = state.score.toLocaleString(); document.getElementById('finalLevel').textContent = state.level;
+            document.getElementById('reviveBtn').style.display = state.hasRevived ? 'none' : 'inline-block';
+            showScreen('gameOverScreen'); if (window.ttSDK) window.ttSDK.onGameEnd(state.score, state.level);
+            if (window.adsManager) { window.adsManager.onGameEnd(); window.adsManager.showGameOverInterstitial(); }
+        }
+
+        async function watchAdToRevive() { if (window.adsManager && await window.adsManager.showResurrectAd()) { state.hasRevived = true; for (let r = CONFIG.GRID_ROWS - 3; r < CONFIG.GRID_ROWS; r++) for (let c = 0; c < CONFIG.GRID_COLS; c++) if (!state.grid[r][c]) state.grid[r][c] = createBubble(r, c); updateBubblePositions(); updateUI(); showScreen('gameScreen'); } }
+        function restartGame() { startGame(); }
+        function backToMenu() { showScreen('menuScreen'); }
+
+        function updateUI() { document.getElementById('scoreValue').textContent = state.score.toLocaleString(); document.getElementById('levelValue').textContent = state.level; document.getElementById('goalValue').textContent = state.goal.toLocaleString(); }
+
+        function draw() {
+            state.ctx.clearRect(0, 0, state.canvas.width, state.canvas.height);
+            for (let r = 0; r < CONFIG.GRID_ROWS; r++) for (let c = 0; c < CONFIG.GRID_COLS; c++) if (state.grid[r][c]) drawBubble(state.grid[r][c]);
+            state.particles = state.particles.filter(p => p.life > 0);
+            state.particles.forEach(p => { state.ctx.save(); state.ctx.globalAlpha = p.life; state.ctx.fillStyle = p.color; state.ctx.beginPath(); state.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); state.ctx.fill(); state.ctx.restore(); p.x += p.vx; p.y += p.vy; p.vy += 0.3; p.life -= 0.03; });
+        }
+
+        function drawBubble(b) {
+            state.ctx.save();
+            if (b.shake > 0) { state.ctx.translate((Math.random() - 0.5) * b.shake, (Math.random() - 0.5) * b.shake); b.shake--; }
+            state.ctx.fillStyle = 'rgba(0,0,0,0.3)'; state.ctx.beginPath(); state.ctx.arc(b.x + b.size/2 + 2, b.y + b.size/2 + 2, b.size/2 - 2, 0, Math.PI * 2); state.ctx.fill();
+            const g = state.ctx.createRadialGradient(b.x + b.size/3, b.y + b.size/3, 0, b.x + b.size/2, b.y + b.size/2, b.size/2);
+            g.addColorStop(0, lighten(CONFIG.COLORS[b.color], 40)); g.addColorStop(1, CONFIG.COLORS[b.color]);
+            state.ctx.fillStyle = g; state.ctx.beginPath(); state.ctx.arc(b.x + b.size/2, b.y + b.size/2, b.size/2 - 2, 0, Math.PI * 2); state.ctx.fill();
+            state.ctx.fillStyle = 'rgba(255,255,255,0.4)'; state.ctx.beginPath(); state.ctx.arc(b.x + b.size/3, b.y + b.size/3, b.size/5, 0, Math.PI * 2); state.ctx.fill();
+            state.ctx.restore();
+        }
+
+        function lighten(c, p) { const n = parseInt(c.slice(1), 16), a = Math.round(2.55 * p), R = Math.min(255, (n >> 16) + a), G = Math.min(255, ((n >> 8) & 0xFF) + a), B = Math.min(255, (n & 0xFF) + a); return `#${(1 << 24 | R << 16 | G << 8 | B).toString(16).slice(1)}`; }
+
+        function gameLoop() { draw(); requestAnimationFrame(gameLoop); }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
